@@ -1,73 +1,64 @@
-// DIAL BUDDY FINAL V6 - SCRATCH DEPLOYMENT - BOTH NUMBERS
-// 6389121501 - Buddy Bot | 6393885050 - User Bot
-const P = require('pino');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
-const express = require('express');
-const app = express();
+const { default: makeWASocket, useMultiFileAuthState, Browsers, printQRInTerminal } = require('@whiskeysockets/baileys')
+const P = require('pino')
+const express = require('express')
+const app = express()
 
-app.get('/', (req,res)=> res.send('Dial Buddy V6 Live - QR ke liye logs dekho'));
+app.get('/', (req,res)=>res.send('Dial Buddy LIVE - QR Ready'))
+app.listen(10000, ()=>console.log('Server Live on 10000'))
 
-async function startBot(phoneNumber, authFolder, botName){
-  const { state, saveCreds } = await useMultiFileAuthState(authFolder);
-  const sock = makeWASocket({
-    auth: state,
-    logger: P({level:'silent'}),
-    browser: [botName, "Chrome", "110.0"],
-    printQRInTerminal: true
-  });
-  sock.ev.on('creds.update', saveCreds);
+async function startBot(folder, number){
+    const { state, saveCreds } = await useMultiFileAuthState(folder)
+    const sock = makeWASocket({
+        auth: state,
+        logger: P({ level: 'silent' }),
+        browser: Browsers.macOS('Desktop'),
+        printQRInTerminal: true
+    })
 
-  // Pairing Code - Agar QR scan nahi hota toh
-  if(!state.creds.registered){
-    try{
-      setTimeout(async ()=>{
-        const code = await sock.requestPairingCode(phoneNumber);
-        console.log(`\n\n===== ${phoneNumber} KA PAIRING CODE: ${code} =====\n`);
-        console.log(`WhatsApp > Linked Devices > Link with phone number > ${code}\n`);
-      }, 5000);
-    }catch(e){ console.log("Pairing code error, QR use karo"); }
-  }
-
-  sock.ev.on('connection.update', ({connection, lastDisconnect, qr})=>{
-    if(qr){
-      console.log(`\n\n========== QR FOR ${phoneNumber} - ${botName} ==========`);
-      // QR Terminal pe ayega - Render logs me dikhega
-    }
-    if(connection==='open'){
-      console.log(`✅ ${phoneNumber} - ${botName} LIVE`);
-    }
-    if(connection==='close'){
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      if(shouldReconnect) startBot(phoneNumber, authFolder, botName);
-    }
-  });
-
-  sock.ev.on('messages.upsert', async ({messages})=>{
-    const m = messages[0];
-    if(!m.message || m.key.fromMe) return;
-    const text = (m.message.conversation || m.message.extendedTextMessage?.text || "").toLowerCase();
-    const jid = m.key.remoteJid;
+    sock.ev.on('creds.update', saveCreds)
     
-    if(text.includes('hi') || text.includes('hello') || text==='1'){
-      await sock.sendMessage(jid, {text: `🔧 *Dial Buddy Panipat - ${botName} LIVE* ✅\n\n1️⃣ Plumber - Rs.199\n2️⃣ RO Repair - Rs.299\n3️⃣ Electrician - Rs.249\n\nType:\n🛒 *cart* - My Cart\n📋 *booking* - My Bookings\n📍 TDI Connaught Estate Only\n\nBot: ${phoneNumber}`});
+    sock.ev.on('connection.update', async (u)=>{
+        const { connection, qr } = u
+        if(qr) {
+            console.log(`\n========== ${number} KA QR UPAR HAI - SCAN KARO ==========\n`)
+        }
+        if(connection === 'open'){
+            console.log(`\n✅✅ ${number} CONNECT HO GAYA - BUDDY LIVE ✅✅✅\n`)
+        }
+    })
+
+    // Pairing code bhi chahiye toh ye chalega
+    if(!sock.authState.creds.registered){
+        setTimeout(async ()=>{
+            try{
+                let code = await sock.requestPairingCode(number)
+                console.log(`\n===== ${number} KA PAIRING CODE: ${code} =====\n`)
+            }catch(e){
+                console.log('Pairing code error, QR se karo - ' + number)
+            }
+        }, 5000)
     }
-    else if(text.includes('cart')){
-      await sock.sendMessage(jid, {text: `🛒 *My Cart*\nPlumber Service - Rs.199\nTotal: Rs.199\n\n*confirm* likho booking ke liye`});
-    }
-    else if(text.includes('confirm')){
-      await sock.sendMessage(jid, {text: `🎉 *Booking Confirmed!*\nJob ID: DB${Date.now().toString().slice(-6)}\nBuddy 10 min me ayega - TDI Gate\n\nRating 1-5 dena\nBuddy: 6389121501\nUser: 6393885050`});
-    }
-    else if(text.includes('booking')){
-      await sock.sendMessage(jid, {text: `📋 *My Bookings*\nJob DB1234 - Plumber - Confirmed\nStatus: Buddy on the way`});
-    }
-  });
+
+    // Auto Reply
+    sock.ev.on('messages.upsert', async (m)=>{
+        try{
+            let msg = m.messages[0]
+            if(!msg.message || msg.key.fromMe) return
+            let text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').toLowerCase()
+            let from = msg.key.remoteJid
+
+            if(text.includes('hi') || text.includes('hello')){
+                await sock.sendMessage(from, { text: `Hi! 👋 Main Dial Buddy hu Panipat TDI ka\n\n1. Plumber\n2. Electrician\n3. RO\n4. Cart\n\nKya chahiye likho?` })
+            }
+            else if(text.includes('plumber')){
+                await sock.sendMessage(from, { text: `🔧 Plumber Service\nCharges: Rs 150 visit\nLocation: Panipat TDI only\n\nBook karne ke liye PLUMBER YES likho` })
+            }
+            else{
+                await sock.sendMessage(from, { text: `Samajh nahi aaya - HI likho menu ke liye` })
+            }
+        }catch(e){}
+    })
 }
 
-// DONO NUMBER START
-startBot('916389121501', './auth_buddy', 'Buddy Bot');
-setTimeout(()=> startBot('916393885050', './auth_user', 'User Bot'), 8000);
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, ()=> console.log(`Server running on ${PORT}`));
-// Upar add karo:
-const QRCode = require('qrcode-terminal');
+startBot('auth_buddy', '916389121501')
+startBot('auth_user', '916393885050')
