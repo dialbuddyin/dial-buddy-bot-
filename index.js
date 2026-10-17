@@ -138,22 +138,24 @@ async function startBot() {
 
   const thisSock = sock;
 
-  // Pairing code (agar abhi tak login nahi hai)
-  if (!state.creds.registered && PAIRING_NUMBER) {
-    setTimeout(async () => {
-      try {
-        if (thisSock !== sock || thisSock.authState.creds.registered) return;
-        const code = await thisSock.requestPairingCode(PAIRING_NUMBER);
-        const pretty = code?.match(/.{1,4}/g)?.join("-") || code;
-        console.log("\n=================================");
-        console.log(`🔑 PAIRING CODE: ${pretty}`);
-        console.log(`📱 Number: ${PAIRING_NUMBER}`);
-        console.log("WhatsApp > Linked Devices > Link with phone number");
-        console.log("=================================\n");
-      } catch (e) {
-        console.error("Pairing code error:", e.message);
-      }
-    }, 4000);
+  // Pairing code: socket ready hone par (pehle QR event pe) sirf ek baar maanga jata hai
+  let pairingRequested = false;
+  async function requestPairing() {
+    if (pairingRequested || !PAIRING_NUMBER) return;
+    if (thisSock !== sock || thisSock.authState.creds.registered) return;
+    pairingRequested = true;
+    try {
+      const code = await thisSock.requestPairingCode(PAIRING_NUMBER);
+      const pretty = code?.match(/.{1,4}/g)?.join("-") || code;
+      console.log("\n=================================");
+      console.log(`🔑 PAIRING CODE: ${pretty}  (${new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })} IST)`);
+      console.log(`📱 Number: ${PAIRING_NUMBER}`);
+      console.log("Sirf sabse NAYA code use karo. Code ~1-2 min me expire hota hai.");
+      console.log("WhatsApp > Linked Devices > Link a device > Link with phone number");
+      console.log("=================================\n");
+    } catch (e) {
+      console.error("Pairing code error:", e.message);
+    }
   }
 
   thisSock.ev.on("creds.update", saveCreds);
@@ -163,6 +165,7 @@ async function startBot() {
 
     if (qr) {
       botStatus = "waiting for QR / pairing";
+      requestPairing();
       console.log("\n📷 QR Code (WhatsApp > Linked Devices > Link a device se scan karo):\n");
       qrcode.generate(qr, { small: true });
       console.log("\nYa upar wala Pairing Code use karo.\n");
@@ -244,4 +247,3 @@ startBot().catch((e) => {
   console.error("Start error:", e.message);
   scheduleReconnect(5000);
 });
-
