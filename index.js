@@ -69,3 +69,5 @@ setTimeout(()=> startBot('916393885050', './auth_user', 'User Bot'), 8000);
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, ()=> console.log(`Server running on ${PORT}`));
+// Upar add karo:
+const QRCode = require('qrcode-terminal');
