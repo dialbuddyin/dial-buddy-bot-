@@ -9,3 +9,4 @@
     "pino": "^8.17.2"
   }
 }
+"qrcode-terminal": "^0.12.0"
