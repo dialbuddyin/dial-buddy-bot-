@@ -1,11 +1,12 @@
 {
-  "name": "dial-buddy-qr",
-  "version": "1.0.0",
+  "name": "dial-buddy",
   "main": "index.js",
-  "scripts": { "start": "node index.js" },
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "express": "4.18.2",
-    "@whiskeysockets/baileys": "6.7.8",
+    "@whiskeysockets/baileys": "6.7.0",
     "pino": "8.17.2"
   }
 }
