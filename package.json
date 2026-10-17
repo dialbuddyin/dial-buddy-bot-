@@ -1,12 +1,11 @@
 {
-  "name": "dial-buddy-v6",
+  "name": "dial-buddy-qr",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": { "start": "node index.js" },
   "dependencies": {
-    "express": "^4.18.2",
-    "@whiskeysockets/baileys": "^6.7.8",
-    "pino": "^8.17.2"
+    "express": "4.18.2",
+    "@whiskeysockets/baileys": "6.7.8",
+    "pino": "8.17.2"
   }
 }
-"qrcode-terminal": "^0.12.0"
