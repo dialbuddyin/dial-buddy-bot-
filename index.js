@@ -1,64 +1,50 @@
-const { default: makeWASocket, useMultiFileAuthState, Browsers, printQRInTerminal } = require('@whiskeysockets/baileys')
+const makeWASocket = require('@whiskeysockets/baileys').default
+const { useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys')
 const P = require('pino')
 const express = require('express')
+
 const app = express()
+app.get('/', (req,res)=>res.send('BOT LIVE - QR ke liye Logs dekho'))
+app.listen(10000)
 
-app.get('/', (req,res)=>res.send('Dial Buddy LIVE - QR Ready'))
-app.listen(10000, ()=>console.log('Server Live on 10000'))
+async function start(){
+const { state, saveCreds } = await useMultiFileAuthState('auth')
+const sock = makeWASocket({
+auth: state,
+logger: P({level:'silent'}),
+browser: Browsers.macOS('Chrome'),
+printQRInTerminal: true
+})
 
-async function startBot(folder, number){
-    const { state, saveCreds } = await useMultiFileAuthState(folder)
-    const sock = makeWASocket({
-        auth: state,
-        logger: P({ level: 'silent' }),
-        browser: Browsers.macOS('Desktop'),
-        printQRInTerminal: true
-    })
+sock.ev.on('creds.update', saveCreds)
 
-    sock.ev.on('creds.update', saveCreds)
-    
-    sock.ev.on('connection.update', async (u)=>{
-        const { connection, qr } = u
-        if(qr) {
-            console.log(`\n========== ${number} KA QR UPAR HAI - SCAN KARO ==========\n`)
-        }
-        if(connection === 'open'){
-            console.log(`\n✅✅ ${number} CONNECT HO GAYA - BUDDY LIVE ✅✅✅\n`)
-        }
-    })
+sock.ev.on('connection.update', (u)=>{
+if(u.qr) console.log('QR CODE UPAR HAI - SCAN KARO')
+if(u.connection === 'open') console.log('✅ CONNECT HO GAYA - BOT LIVE ✅')
+if(u.connection === 'close') start()
+})
 
-    // Pairing code bhi chahiye toh ye chalega
-    if(!sock.authState.creds.registered){
-        setTimeout(async ()=>{
-            try{
-                let code = await sock.requestPairingCode(number)
-                console.log(`\n===== ${number} KA PAIRING CODE: ${code} =====\n`)
-            }catch(e){
-                console.log('Pairing code error, QR se karo - ' + number)
-            }
-        }, 5000)
-    }
+sock.ev.on('messages.upsert', async (m)=>{
+try{
+let msg = m.messages[0]
+if(!msg.message || msg.key.fromMe) return
+let text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').toLowerCase()
+let from = msg.key.remoteJid
 
-    // Auto Reply
-    sock.ev.on('messages.upsert', async (m)=>{
-        try{
-            let msg = m.messages[0]
-            if(!msg.message || msg.key.fromMe) return
-            let text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').toLowerCase()
-            let from = msg.key.remoteJid
-
-            if(text.includes('hi') || text.includes('hello')){
-                await sock.sendMessage(from, { text: `Hi! 👋 Main Dial Buddy hu Panipat TDI ka\n\n1. Plumber\n2. Electrician\n3. RO\n4. Cart\n\nKya chahiye likho?` })
-            }
-            else if(text.includes('plumber')){
-                await sock.sendMessage(from, { text: `🔧 Plumber Service\nCharges: Rs 150 visit\nLocation: Panipat TDI only\n\nBook karne ke liye PLUMBER YES likho` })
-            }
-            else{
-                await sock.sendMessage(from, { text: `Samajh nahi aaya - HI likho menu ke liye` })
-            }
-        }catch(e){}
-    })
+if(text === 'hi' || text === 'hello' || text === 'hii'){
+await sock.sendMessage(from, {text:'*DIAL BUDDY - TDI Panipat* 👋\n\n1️⃣ Plumber - Rs150\n2️⃣ Electrician - Rs200\n3️⃣ RO Service\n4️⃣ Cart\n\nKya chahiye? Naam likho - Jaise *PLUMBER*'})
+}
+else if(text.includes('plumber')){
+await sock.sendMessage(from, {text:'🔧 *PLUMBER*\nCharge Rs150 visit\nPanipat TDI Only\n\nBook? *PLUMBER YES* likho'})
+}
+else if(text.includes('yes')){
+await sock.sendMessage(from, {text:'✅ Booking noted! 10 min me call ayega\nLocation bhejo'})
+}
+else{
+await sock.sendMessage(from, {text:'HI likho menu ke liye 👆'})
+}
+}catch(e){ console.log(e) }
+})
 }
 
-startBot('auth_buddy', '916389121501')
-startBot('auth_user', '916393885050')
+start()
