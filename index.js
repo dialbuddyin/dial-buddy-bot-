@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const pino = require("pino");
+const qrcode = require("qrcode-terminal");
 const { Boom } = require("@hapi/boom");
 const {
   default: makeWASocket,
@@ -121,7 +122,7 @@ async function startBot() {
   sock = makeWASocket({
     version,
     logger,
-    printQRInTerminal: true,
+    printQRInTerminal: false, // QR neeche qrcode-terminal se print hota hai (duplicate se bachne ke liye)
     browser: Browsers.ubuntu("Chrome"),
     auth: {
       creds: state.creds,
@@ -162,7 +163,9 @@ async function startBot() {
 
     if (qr) {
       botStatus = "waiting for QR / pairing";
-      console.log("📷 QR ready - upar scan karo ya Pairing Code use karo.");
+      console.log("\n📷 QR Code (WhatsApp > Linked Devices > Link a device se scan karo):\n");
+      qrcode.generate(qr, { small: true });
+      console.log("\nYa upar wala Pairing Code use karo.\n");
     }
 
     if (connection === "open") {
@@ -241,3 +244,4 @@ startBot().catch((e) => {
   console.error("Start error:", e.message);
   scheduleReconnect(5000);
 });
+
